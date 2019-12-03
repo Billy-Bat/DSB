@@ -67,6 +67,37 @@ def get_installationID_data(userdf) :
 
     return 0
 
+def encode_title(train, test, train_labels):
+    # encode title
+    train['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), train['title'], train['event_code']))
+    test['title_event_code'] = list(map(lambda x, y: str(x) + '_' + str(y), test['title'], test['event_code']))
+    all_title_event_code = list(set(train["title_event_code"].unique()).union(test["title_event_code"].unique()))
+    # make a list with all the unique 'titles' from the train and test set
+    list_of_user_activities = list(set(train['title'].unique()).union(set(test['title'].unique())))
+    # make a list with all the unique 'event_code' from the train and test set
+    list_of_event_code = list(set(train['event_code'].unique()).union(set(test['event_code'].unique())))
+    list_of_event_id = list(set(train['event_id'].unique()).union(set(test['event_id'].unique())))
+    # make a list with all the unique worlds from the train and test set
+    list_of_worlds = list(set(train['world'].unique()).union(set(test['world'].unique())))
+    # create a dictionary numerating the titles
+    activities_map = dict(zip(list_of_user_activities, np.arange(len(list_of_user_activities))))
+    activities_labels = dict(zip(np.arange(len(list_of_user_activities)), list_of_user_activities))
+    activities_world = dict(zip(list_of_worlds, np.arange(len(list_of_worlds))))
+    assess_titles = list(set(train[train['type'] == 'Assessment']['title'].value_counts().index).union(set(test[test['type'] == 'Assessment']['title'].value_counts().index)))
+    # replace the text titles with the number titles from the dict
+    train['title'] = train['title'].map(activities_map)
+    test['title'] = test['title'].map(activities_map)
+    train['world'] = train['world'].map(activities_world)
+    test['world'] = test['world'].map(activities_world)
+    train_labels['title'] = train_labels['title'].map(activities_map)
+    win_code = dict(zip(activities_map.values(), (4100*np.ones(len(activities_map))).astype('int')))
+    # then, it set one element, the 'Bird Measurer (Assessment)' as 4110, 10 more than the rest
+    win_code[activities_map['Bird Measurer (Assessment)']] = 4110
+    # convert text into datetime
+    train['timestamp'] = pd.to_datetime(train['timestamp'])
+    test['timestamp'] = pd.to_datetime(test['timestamp'])
+
+    return train, test, train_labels, win_code, list_of_user_activities, list_of_event_code, activities_labels, assess_titles, list_of_event_id, all_title_event_code
 
 
 if __name__ == '__main__' :
@@ -77,15 +108,22 @@ if __name__ == '__main__' :
     #2# load the training data
     target = pd.read_csv('data/train_small.csv')
 
+    #2# load the test_data
+    test = pd.read_csv('data/test.csv')
+
+    train, test, train_labels, win_code, list_of_user_activities, list_of_event_code, activities_labels,
+    assess_titles, list_of_event_id, all_title_event_code = encode_title(train, test, train)
 
     # Group Users
-    for i, (id, insta_id) in enumerate(train.groupby('installation_id')) :
-        # Group game sessions
-        for j, (id, game_session) in enumerate(train.groupby('game_session')) :
-
-            session_type = session['type'].iloc[0]
-            session_title = session['title'].iloc[0]
-            session_title_text = activities_labels[session_title]
+    # for i, (id, insta_id) in enumerate(train.groupby('installation_id')) :
+    #     # Group game sessions
+    #     for j, (id, gsession) in enumerate(train.groupby('game_session')) :
+    #
+    #         session_type = gsession['type'].iloc[0]
+    #         session_title = gsession['title'].iloc[0]
+    #         session_title_text = activities_labels[session_title]
+    #
+    #         print(gsession)
 
 
 
