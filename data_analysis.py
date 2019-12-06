@@ -502,19 +502,142 @@ NONE            0.002079
 #
 # plt.show()
 #-----------------------------------------------------------------------------#
-train = next(train) # Usually the last Assessment of the train set has no correspondin
-train['timestamp'] = pd.to_datetime(train['timestamp'])
-act_played = pd.DataFrame(train['title'].value_counts()).reset_index()
-ax = sns.barplot(x='title', y='index', data=act_played)
-ax.set_title('Activity Count')
-plt.gcf().savefig('vizu/Activitycount.png')
-
-plt.show()
-
-
+# train = next(train) # Usually the last Assessment of the train set has no correspondin
+# train['timestamp'] = pd.to_datetime(train['timestamp'])
+# labels = pd.read_csv('data/train_labels.csv')
+# accuracy_perhour = {}
+# for i in range(24) :
+#     accuracy_perhour[i] = {0:0, 1:0, 2:0, 3:0}
+#
+# def div_zero(A, B) :
+#     return A/B if B else 0
+#
 # for i, (instaID, played) in enumerate(train.groupby('installation_id')):
 #     Total_Assessment = 0
-#     pla
-    # for j, (gs_id, gs_info) in enumerate(played.groupby('game_session')):
-    #     if gs_info['type'].iloc[0] == 'Assessment' :
-    #         result = labels['accuracy_group'][labels['game_session'] == gs_id].values
+#     for j, (gs_id, gs_info) in enumerate(played.groupby('game_session')):
+#         if gs_info['type'].iloc[0] == 'Assessment' :
+#             result = labels['accuracy_group'][labels['game_session'] == gs_id].values
+#             title = labels['title'][labels['game_session'] == gs_id].values
+#             raw_date = gs_info['timestamp'].values[0]
+#             ts = (raw_date - np.datetime64('1970-01-01T00:00:00Z'))/np.timedelta64(1, 's')
+#             date_ = datetime.utcfromtimestamp(ts)
+#             hour = date_.hour
+#
+#             date = (gs_info['timestamp'].values[0].astype('datetime64[D]').view('int64') - 4) % 7
+#             if len(result) != 0 :
+#                 accuracy_perhour[hour][result[0]] += 1
+#
+# barWidth = 0.25
+# acc0_placement = np.arange(24)*2
+# acc1_placement = [x + barWidth for x in acc0_placement]
+# acc2_placement = [x + barWidth for x in acc1_placement]
+# acc3_placement = [x + barWidth for x in acc2_placement]
+# plt.bar(acc0_placement, [div_zero(accuracy_perhour[x][0], sum(accuracy_perhour[x].values())) for x in accuracy_perhour.keys()], align='center', width=barWidth, color='#fbc445')
+# plt.bar(acc1_placement, [div_zero(accuracy_perhour[x][1], sum(accuracy_perhour[x].values())) for x in accuracy_perhour.keys()], align='center', width=barWidth, color='#070033')
+# plt.bar(acc2_placement, [div_zero(accuracy_perhour[x][2], sum(accuracy_perhour[x].values())) for x in accuracy_perhour.keys()], align='center', width=barWidth, color='#bf1e2e')
+# plt.bar(acc3_placement, [div_zero(accuracy_perhour[x][3], sum(accuracy_perhour[x].values())) for x in accuracy_perhour.keys()], align='center', width=barWidth, color='#bada55')
+#
+# plt.xticks(acc1_placement, list(accuracy_perhour.keys()))
+# colors = ['#fbc445', '#070033', '#bf1e2e', '#bada55']
+# handles = [plt.Rectangle((0,0),1,1, color=clr) for clr in colors]
+# plt.legend(handles, [0, 1, 2, 3])
+# plt.gca().set_title('Accuracy Proportion per Hour of the day')
+# plt.gca().set_ylabel('Proportion')
+# plt.gcf().savefig('vizu/AccuracyGroupPerHour.png')
+# plt.show()
+
+#-----------------------------------------------------------------------------#
+# train = next(train) # Usually the last Assessment of the train set has no correspondin
+# labels = pd.read_csv('data/train_labels.csv')
+# accuracy_group_vs_correct = {0:[], 1:[], 2:[], 3:[]}
+# accuracy_group_vs_incorrect = {0:[], 1:[], 2:[], 3:[]}
+# acc_group = {0:[], 1:[], 2:[], 3:[]}
+#
+# for i, (instaID, played) in enumerate(train.groupby('installation_id')):
+#     Total_Assessment = 0
+#     accum_correct = 0
+#     accum_incorrect = 0
+#     accum_accurracy = 0
+#     prev_accurracy = []
+#     for j, (gs_id, gs_info) in enumerate(played.groupby('game_session')):
+#         if gs_info['type'].iloc[0] == 'Assessment' :
+#             result = labels['accuracy_group'][labels['game_session'] == gs_id].values
+#             indexes_submission = gs_info.index[(gs_info['event_code'] == 4100) |(gs_info['event_code'] == 4110)]
+#             # currentType = info['title'].iloc[0]
+#             correct_attempts = 0
+#             incorrect_attemps = 0
+#             group_accurracy = 0
+#
+#
+#             for id in indexes_submission :
+#                 data = json.loads(gs_info['event_data'][gs_info.index == id].values[0])
+#                 if data['correct'] == True : correct_attempts += 1
+#                 elif data['correct'] == False : incorrect_attemps += 1
+#
+#
+#             if (correct_attempts >= 1) & (incorrect_attemps == 0) :
+#                 accuracy_group_vs_correct[3].append(accum_correct),  accuracy_group_vs_incorrect[3].append(accum_incorrect)
+#                 acc_group[3].append(accum_accurracy)
+#                 group_accurracy = 3
+#             elif (correct_attempts == 1) & (incorrect_attemps == 1) :
+#                 accuracy_group_vs_correct[2].append(accum_correct), accuracy_group_vs_incorrect[2].append(accum_incorrect)
+#                 acc_group[2].append(accum_accurracy)
+#                 group_accurracy = 2
+#             elif (correct_attempts == 1) & (incorrect_attemps > 2) :
+#                 accuracy_group_vs_correct[1].append(accum_correct), accuracy_group_vs_incorrect[1].append(accum_incorrect)
+#                 acc_group[1].append(accum_accurracy)
+#                 group_accurracy = 1
+#             elif (correct_attempts == 0) :
+#                 accuracy_group_vs_correct[0].append(accum_correct), accuracy_group_vs_incorrect[0].append(accum_incorrect)
+#                 acc_group[0].append(accum_accurracy)
+#                 group_accurracy = 0
+#
+#
+#             accum_correct += correct_attempts
+#             accum_incorrect += incorrect_attemps
+#
+#             prev_accurracy.append(group_accurracy)
+#             acc_group[group_accurracy].append(mean(prev_accurracy))
+#
+#
+#
+# #1# Correct vs Acc Group
+# ax = sns.barplot(x=[0, 1, 2, 3], y=list(map(np.mean, accuracy_group_vs_correct.values())), yerr=list(map(np.std, accuracy_group_vs_correct.values())))
+# ax.set_xlabel('Accuracy Group')
+# ax.set_ylabel('Accumulated Correct Attempt')
+# plt.gca().set_title('Accumulated Correct Attempt vs Accuracy Group')
+#
+# plt.xticks(range(4), [0, 1, 2, 3])
+# plt.gcf().savefig('vizu/AccumCorrectVSAccuracyGroup')
+# plt.show()
+#
+# #2# InCorrect vs Acc Group
+# ax = sns.barplot(x=[0, 1, 2, 3], y=list(map(np.mean, accuracy_group_vs_incorrect.values())), yerr=list(map(np.std, accuracy_group_vs_incorrect.values())))
+# ax.set_xlabel('Accuracy Group')
+# ax.set_ylabel('Accumulated Incorrect Attempt')
+# plt.gca().set_title('Accumulated Incorrect Attempt vs Accuracy Group')
+#
+# plt.xticks(range(4), [0, 1, 2, 3])
+# plt.gcf().savefig('vizu/AccumIncorrectVSAccuracyGroup')
+# plt.show()
+# #3# Accumulated Accuracy vs Accuracy Group
+# ax = sns.barplot(x=[0, 1, 2, 3], y=list(map(np.mean, acc_group.values())), yerr=list(map(np.std, acc_group.values())))
+# ax.set_xlabel('Accuracy Group')
+# ax.set_ylabel('Accumulated Accuracy')
+# plt.gca().set_title('Accumulated Accuracy Group vs Accuracy Group')
+#
+# plt.show()
+#-----------------------------------------------------------------------------#
+train = next(train) # Usually the last Assessment of the train set has no correspondin
+[4070, 4030, 3010, 3110, 4020, 4035, 2020, 4021, 2030, 4025, 2000,
+            3021, 3121, 3020, 3120, 4022, 4040, 4031, 2040, 2050, 2080, 4010,
+            4230, 4045, 4235, 4090, 5000, 2083, 5010, 4100, 4220, 4110, 2025,
+            2060, 2035, 2081, 4080, 2070, 2010, 4095, 2075]
+
+uniquestuff = {}
+for i, (instaID, played) in enumerate(train.groupby('installation_id')):
+
+    for j, (gs_id, gs_info) in enumerate(played.groupby('game_session')):
+        interest = gs_info[gs_info['event_id'] == '67aa2ada']
+        if not interest.empty :
+            print(interest['event_code'].unique())
