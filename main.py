@@ -43,17 +43,20 @@ EventCode : 4100 4110
 def div_zero(A, B) :
     return A/B if B else 0
 
-def get_insta_Data(instal_Data, test=False) :
+def get_insta_Data(instal_Data, Activities_list, test=False) :
     """
 
     """
     Assessments = []
     wincode = {'Mushroom Sorter (Assessment)':4100, 'Bird Measurer (Assessment)':4110, 'Cart Balancer (Assessment)':4100, 'Cauldron Filler (Assessment)':4100, 'Chest Sorter (Assessment)':4100}
     cols = {'installation_id':0, 'game_session':0, 'session_title':0, 'hour':0, 'total_spent':0, 0:0, 1:0, 2:0, 3:0, 'accum_accuracy':0, 'accum_accuracy_group':0,
-            'accum_correct':0, 'accum_incorrect':0, 'last_accuracyGroup': 0, 'Total_events':0, 'Total_Assessment':0, 'helped':0, 'timespentInstru':0, 'timespentTuto': 0, 'Total_Introskip':0,
-            'Total_Tuto_skipped':0, 'Incorr_feedback_Count':0, 'Incorr_feedback_Time': 0, 'Target':0, 'Replay_Click': 0}
+            'accum_correct':0, 'accum_incorrect':0, 'last_accuracyGroup': 0, 'Total_events':0, 'Total_Assessment':0, 'helped':0, 'timespentInstru':0, 'timespentTuto': 0, 'TotalQuit':0, 'Total_Introskip':0,
+            'Total_Tuto_skipped':0, 'Incorr_feedback_Count':0, 'Incorr_feedback_Time': 0, 'Replay_Click': 0, 'Scrub_A_Dub_avg':0, 'Target':0}
     Activity_count = {'Clip':0, 'Game':0, 'Activity':0, 'Assessment':0}
     AssessmentsTaken = {'Mushroom Sorter (Assessment)':0, 'Bird Measurer (Assessment)':0, 'Cart Balancer (Assessment)':0, 'Cauldron Filler (Assessment)':0, 'Chest Sorter (Assessment)':0}
+    TimePerRound = dict.fromkeys([('RTime_' + act[0:4]) for act in Activities_list], 0)
+    ActionPerActivity = dict.fromkeys(['Action_' + act[0:4] for act in Activities_list], 0)
+
     AccGroupCount = {0:0, 1:0, 2:0, 3:0}
 
     # number and accumulated corr/incorr attemps + Accum. and Accuracy Group Count
@@ -86,6 +89,10 @@ def get_insta_Data(instal_Data, test=False) :
     Incorr_feedback_Time = 0
     # Replay pressed (Perserverance)
     Replay_Click = 0
+    # TotalQuit
+    TotalQuit = 0
+    # Avg Scrub-A-Dub time spend per level
+    Scrub_a_dub_avg = 0
 
     for j, (gs_id, gs_info) in enumerate(instal_Data.groupby('game_session')):
         gs_type = gs_info['type'].iloc[0]
@@ -96,8 +103,10 @@ def get_insta_Data(instal_Data, test=False) :
             #1# Append all the data collected so far (excluding current Assessment, 以外 session_title)
             # Create the entry dictionary used for the row entry
             features = cols.copy()
+            features.update(TimePerRound)
             features.update(Activity_count)
             features.update(AssessmentsTaken)
+            features.update(ActionPerActivity)
             # Update the dictionary with value extracted from the current session
             features['installation_id'] = gs_info['installation_id'].iloc[0]
             features['game_session'] = game_session
@@ -116,13 +125,19 @@ def get_insta_Data(instal_Data, test=False) :
             features['helped'] = helped
             features['timespentInstru'] = timespentInstru
             features['timespentTuto'] = timespentTuto
+            features['TotalQuit'] = TotalQuit
             features['Total_Introskip'] = Total_Intro_skipped
             features['Total_Tuto_skipped'] = Total_Tuto_skipped
             features['Incorr_feedback_Count'] = Incorr_feedback_Count
             features['Incorr_feedback_Time'] = Incorr_feedback_Time
             features['Replay_Click'] = Replay_Click
+            features['Scrub_A_Dub_avg'] = Scrub_a_dub_avg
             for act in Activity_count :
                 features[act] += Activity_count[act]
+            for act_dicName in TimePerRound : # watch out the RTIME is already in the key
+                features[act_dicName] = TimePerRound[act_dicName]
+            for act_dicNamE in ActionPerActivity :
+                features[act_dicNamE] = ActionPerActivity[act_dicNamE]
             #### APEND IS AT THE END FOR THE TARGET VALUE
 
 
@@ -202,13 +217,30 @@ def get_insta_Data(instal_Data, test=False) :
         if 4095 in events_collection :
             Replay_Click += 1
         # Time spent per Actictivity
+        ####WIP####
+        # TotalQuit
+        if 2010 in events_collection :
+            TotalQuit += 1
+        # Useless Click
+        ####WIP####
 
         helped += 1 if 4090 in events_collection else 0
         total_event += gs_info.shape[0]
         total_spent += (pd.to_datetime(gs_info.iloc[-1, 2]) - pd.to_datetime(gs_info.iloc[0, 2])).seconds
         Activity_count[gs_type] += 1
 
-
+        # check end of level condition to check how much time was spent per level (MOST RECENT SESSION)(Scrub_A_Dub ONLY)
+        if 2050 in events_collection :
+            data1 = gs_info['event_data'][gs_info['event_code'] == 2050]
+            avg_duration = np.mean([json.loads(row)['duration'] for row in data1])
+            Scrub_a_dub_avg = avg_duration
+        # check end of round condition to check how much time was spent per round
+        if 2030 in events_collection :
+            data1 = gs_info['event_data'][gs_info['event_code'] == 2030] # one row is one round
+            avg_duration = np.mean([json.loads(row)['duration'] for row in data1])
+            TimePerRound['RTime_' + gs_title[0:4]] = avg_duration
+        # check for the number of actions per activity
+        ActionPerActivity['Action_' + gs_title[0:4]] = gs_info.shape[0] # only the most recent one
 
     if test :
         return Assessments[-1]
@@ -222,15 +254,16 @@ if __name__ == '__main__' :
     # print(reduced_train)
 
     #1# load the train data
-    train = pd.read_csv('data/train.csv', chunksize=4000000)
-    train = next(train)
+    train = pd.read_csv('data/train.csv')
+    # train = next(train)
+    Activities_list = train['title'].unique()
+
     for insta_Id, insta_info, in train.groupby('installation_id') :
-        Data = get_insta_Data(insta_info)
-        if Data :
+        Data = get_insta_Data(insta_info, Activities_list)
+        if Data : # some installation_id never took an Assessment
             for entry in Data :
                 reduced_train = reduced_train.append(entry, ignore_index=True)
-
-    reduced_train.to_csv('data/reduced_train.csv', index=False)
+    reduced_train.to_csv('data/reduced_trainFull.csv', index=False)
 
 
     # DONT NEED THE TRAINING DATA HERE

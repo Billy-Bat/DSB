@@ -1000,22 +1000,25 @@ class FeatureTransformer(BaseEstimator, TransformerMixin):
 
 
 
-reduced = pd.read_csv('data/reduced_train.csv')
+reduced = pd.read_csv('data/reduced_trainFull.csv')
+print(reduced.shape)
 Target = reduced['Target']
 reduced = reduced.drop(['Target'], axis=1)
 reduced['total_spent'] = np.log1p(reduced['total_spent'])
 reduced['accum_accuracy'] = np.log1p(reduced['accum_accuracy'])
 reduced = pd.get_dummies(reduced, prefix=['Type'], columns=['session_title'])
 
+for col in reduced.columns :
+    if len(reduced[col].value_counts()) == 1 :
+        reduced = reduced.drop(col, axis=1)
 
-
-params = {'n_estimators':2000,
+params = {'n_estimators':8000,
             'boosting_type': 'gbdt',
             'objective': 'regression',
-            'metric': 'rmse',
+            'metric': 'mae',
             'subsample': 0.75,
             'subsample_freq': 1,
-            'learning_rate': 0.04,
+            'learning_rate': 0.05,
             'feature_fraction': 0.9,
          'max_depth': 15,
             'lambda_l1': 1,
@@ -1040,5 +1043,10 @@ regressor_model1.fit(X=reduced, y=y, folds=folds, params=params, preprocesser=mt
 regressor_model1.plot_feature_importance()
 regressor_model1.get_top_features()
 regressor_model1.plot_metric()
-
 plt.show()
+
+"""
+[487]	train's l1: 0.875042	train's cappa: 0.609855	valid's l1: 0.943896	valid's cappa: 0.524321
+CV mean score on train: 0.6003 +/- 0.0125 std.
+CV mean score on valid: 0.5203 +/- 0.0037 std.
+"""

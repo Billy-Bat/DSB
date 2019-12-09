@@ -39,6 +39,9 @@ def outlier_analysis(Pred, Data, include=None, trsh=0.99, _Save=False):
 
     for col in iterable :
         if (col != 'game_session') &  (col != 'session_title'):
+            if Data[col].isna().any() :
+                print('WARNING : {} column contains Nan or Infinite \n It will not be plotted'.format(col))
+                continue
             data = pd.concat((Pred, Data[col]), axis=1, sort=True)
             Pred_quant = Pred.quantile(trsh)
             Data_quant = Data[col].quantile(trsh)
@@ -49,7 +52,7 @@ def outlier_analysis(Pred, Data, include=None, trsh=0.99, _Save=False):
             s1.annotate(stats.pearsonr)
 
             plt.subplots_adjust(top=0.9)
-            s1.fig.suptitle('{} Outlier Analysis \n quantile at {}'.format(col, trsh))
+            s1.fig.suptitle('Outlier Analysis \n {} \n quantile at {}'.format(col, trsh))
 
             pear_r = stats.pearsonr(data.iloc[:,0], data.iloc[:,1])[0]
             if pear_r > 0.5 :
@@ -62,12 +65,13 @@ def outlier_analysis(Pred, Data, include=None, trsh=0.99, _Save=False):
                 fig = plt.gcf()
                 fig.savefig('reduced_vizu/outlier/{}_outlierAnalysis.png'.format(col))
 
-        plt.show()
+        # plt.show()
 
     return indexes
 
 
 reduced = pd.read_csv('data/reduced_train.csv')
+
 Target = reduced['Target']
 reduced = reduced.drop(['Target'], axis=1)
 reduced['total_spent'] = np.log1p(reduced['total_spent'])
@@ -78,34 +82,4 @@ reduced = pd.get_dummies(reduced, prefix=['Type'], columns=['session_title'])
 # sns.distplot(reduced['accum_accuracy'])
 # plt.show()
 
-
-# corr_heatmap(Target, reduced)
-# outlier_analysis(Target, reduced, _Save=True)
-
-param = {'n_estimators':2000,
-         'learning_rate': 0.01,
-         'metric': 'multiclass',
-         'objective': 'multiclass',
-         'max_depth': 15,
-         'num_classes': 4,
-         'feature_fraction': 0.85,
-         'subsample': 0.85,
-         'verbose': 1000,
-         'early_stopping_rounds': 100, 'eval_metric': 'cappa'
-        }
-
-y = data['accuracy_group']
-n_fold = 5
-#folds = StratifiedKFold(n_splits=n_fold)
-#folds = KFold(n_splits=n_fold)
-folds = RepeatedStratifiedKFold(n_splits=n_fold)
-folds = GroupKFold(n_splits=n_fold)
-cols_to_drop = ['game_session']
-cat_cols = ['world']
-mt = MainTransformer(create_interactions=False)
-ct = CategoricalTransformer(drop_original=True, cat_cols=cat_cols)
-ft = FeatureTransformer()
-transformers = {'ft': ft, 'ct': ct}
-lgb_model = ClassifierModel(model_wrapper=LGBWrapper())
-lgb_model.fit(X=data, y=y, folds=folds, params=param, preprocesser=mt, transformers=transformers,
-                    eval_metric='cappa', cols_to_drop=cols_to_drop)
+outlier_analysis(Target, reduced, _Save=True)
