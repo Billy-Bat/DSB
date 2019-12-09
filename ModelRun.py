@@ -9,6 +9,8 @@ from category_encoders.ordinal import OrdinalEncoder
 import copy
 import time
 
+import xgboost as xgb
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -145,7 +147,7 @@ class ClassifierModel(object):
             X_train, X_valid = X.iloc[train_index], X.iloc[valid_index]
             y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
             if self.train_one_fold:
-                X_train = X[self.original_columns]
+                X_train = X[self.columns]
                 y_train = y
                 X_valid = None
                 y_valid = None
@@ -222,7 +224,6 @@ class ClassifierModel(object):
         return datasets['X_train'], datasets['X_valid'], datasets['X_holdout']
 
     def calc_scores_(self):
-        print()
         datasets = [k for k, v in [v['scores'] for k, v in self.folds_dict.items()][0].items() if len(v) > 0]
         self.scores = {}
         for d in datasets:
@@ -524,7 +525,7 @@ class RegressorModel(object):
             X_train, X_valid = X.iloc[train_index], X.iloc[valid_index]
             y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
             if self.train_one_fold:
-                X_train = X[self.original_columns]
+                X_train = X[self.columns]
                 y_train = y
                 X_valid = None
                 y_valid = None
@@ -600,7 +601,6 @@ class RegressorModel(object):
         return datasets['X_train'], datasets['X_valid'], datasets['X_holdout']
 
     def calc_scores_(self):
-        print()
         datasets = [k for k, v in [v['scores'] for k, v in self.folds_dict.items()][0].items() if len(v) > 0]
         self.scores = {}
         for d in datasets:
@@ -792,8 +792,6 @@ def eval_qwk_xgb(y_pred, y_true):
     """
     Fast cappa eval function for xgb.
     """
-    # print('y_true', y_true)
-    # print('y_pred', y_pred)
     y_true = y_true.get_label()
     y_pred = y_pred.argmax(axis=1)
     return 'cappa', -qwk(y_true, y_pred)
@@ -887,7 +885,6 @@ class CatWrapper(object):
         else:
             return self.model.predict_proba(X_test, ntree_end=self.model.best_iteration_)
 
-
 class XGBWrapper(object):
     """
     A wrapper for xgboost model so that we will have a single api for various models.
@@ -922,7 +919,6 @@ class XGBWrapper(object):
             return self.model.predict_proba(X_test, ntree_limit=self.model.best_iteration)[:, 1]
         else:
             return self.model.predict_proba(X_test, ntree_limit=self.model.best_iteration)
-
 
 class MainTransformer(BaseEstimator, TransformerMixin):
 
@@ -999,20 +995,24 @@ class FeatureTransformer(BaseEstimator, TransformerMixin):
 
 
 
-
 reduced = pd.read_csv('data/reduced_trainFull.csv')
-print(reduced.shape)
 Target = reduced['Target']
 reduced = reduced.drop(['Target'], axis=1)
 reduced['total_spent'] = np.log1p(reduced['total_spent'])
 reduced['accum_accuracy'] = np.log1p(reduced['accum_accuracy'])
-reduced = pd.get_dummies(reduced, prefix=['Type'], columns=['session_title'])
+reduced['session_title'] = reduced['session_title'].factorize()[0]
 
 for col in reduced.columns :
     if len(reduced[col].value_counts()) == 1 :
         reduced = reduced.drop(col, axis=1)
+y = Target
+n_fold = 5
+cols_to_drop = ['game_session', 'installation_id', 'Action_12M', 'Action_Bala',
+                'Action_Bala', 'Action_Bird', 'Action_Bott', 'Action_Bubb', 'Action_Bug',
+                'Action_Cost', 'Action_Dino', 'Action_Egg', 'Action_Fire', 'Action_Flow']
 
-params = {'n_estimators':8000,
+#---------------------------------------LBG REGRESSOR--------------------------#
+params = {'n_estimators':2000,
             'boosting_type': 'gbdt',
             'objective': 'regression',
             'metric': 'mae',
@@ -1027,13 +1027,10 @@ params = {'n_estimators':8000,
             'early_stopping_rounds': 100, 'eval_metric': 'cappa'
             }
 
-y = Target
-n_fold = 5
 #folds = StratifiedKFold(n_splits=n_fold)
 #folds = KFold(n_splits=n_fold)
 folds = RepeatedStratifiedKFold(n_splits=n_fold)
 folds = GroupKFold(n_splits=n_fold)
-cols_to_drop = ['game_session', 'installation_id']
 mt = MainTransformer()
 ft = FeatureTransformer()
 transformers = {'ft': ft}
@@ -1049,4 +1046,30 @@ plt.show()
 [487]	train's l1: 0.875042	train's cappa: 0.609855	valid's l1: 0.943896	valid's cappa: 0.524321
 CV mean score on train: 0.6003 +/- 0.0125 std.
 CV mean score on valid: 0.5203 +/- 0.0037 std.
-"""
+# """
+#----------------------------------XGBOOST--------------------------------------#
+# xgb_params = {
+#         'colsample_bytree': 0.8,
+#         'learning_rate': 0.05,
+#         'max_depth': 7,
+#         'subsample': 1,
+#         'objective':'multi:softprob',
+#         'num_class':4,
+#         'eval_metric':'merror',
+#         'min_child_weight':10,
+#         'gamma':0.25,
+#         'n_estimators':500,
+#         'nthread': 6,
+#         'verbose': 1000,
+#         'early_stopping_rounds': 100,
+#     }
+#
+# folds = GroupKFold(n_splits=5)
+# cat_cols = []
+# mt = MainTransformer(create_interactions=False)
+# ct = CategoricalTransformer(drop_original=False, cat_cols=cat_cols)
+# ft = FeatureTransformer()
+# transformers = {'ft': ft, 'ct': ct}
+# xgb_model = ClassifierModel(model_wrapper=XGBWrapper())
+# xgb_model.fit(X=reduced, y=y, folds=folds, params=xgb_params, preprocesser=mt, transformers=transformers,
+#               eval_metric='cappa', cols_to_drop=cols_to_drop)
